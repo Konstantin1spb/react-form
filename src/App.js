@@ -1,112 +1,68 @@
 import styles from './app.module.css';
-import { useState } from 'react';
 import { useRef } from 'react';
+import { useForm } from 'react-hook-form';
+import * as yup from 'yup';
+import { yupResolver } from '@hookform/resolvers/yup';
+
+const fieldsScheme = yup.object().shape({
+	email: yup
+		.string()
+		.matches(/^[\w@.]*$/, 'Неверный email, допустимые символы: буквы, цифры и "@"')
+		.max(25, 'Допустимое количество символов: 25')
+		.min(5, 'Минимальное количество символов: 5'),
+	password: yup
+		.string()
+		.matches(
+			/^.*(?=.*[a-zA-Z])(?=.*\d)(?=.*[!#$%&? "]).*$/,
+			'Пароль должен содержать буквы, заглавные буквы, цифры и спец. символы',
+		)
+		.max(30, 'Допустимое количество символов: 30')
+		.min(8, 'Минимальное количество символов: 8'),
+	repeatedPassword: yup
+		.string()
+		.oneOf([yup.ref('password'), null], 'Пароли должны совпадать'),
+});
 
 const App = () => {
+	const {
+		register,
+		handleSubmit,
+		formState: { errors },
+	} = useForm({
+		defaultValues: {
+			email: '',
+			password: '',
+			repeatedPassword: '',
+		},
+		resolver: yupResolver(fieldsScheme),
+	});
+
+	const emailError = errors.email?.message;
+	const passwordError = errors.password?.message;
+	const repeatedPasswordError = errors.repeatedPassword?.message;
+
 	document.addEventListener('keydown', (event) => {
 		if (event.keyCode === 13) {
 			event.preventDefault();
 		}
 	});
 
-	const [email, setEmail] = useState('');
-	const [password, setPassword] = useState('');
-	const [repeatedPassword, setRepeatedPassword] = useState('');
-	const [emailError, setEmailError] = useState(null);
-	const [passwordError, setPasswordError] = useState(null);
-	const [repeatedPasswordError, setRepeatedPasswordError] = useState(null);
 	const submitButtonRef = useRef(null);
 
-	const sendData = (data) => {
-		console.log(data);
+	const onSubmit = (formData) => {
+		console.log(formData);
 	};
 
-	const onSubmit = (event) => {
-		event.preventDefault();
-		sendData({ email, password, repeatedPassword });
-	};
-
-	const onEmailChange = ({ target }) => {
-		setEmail(target.value);
-
-		let newError = null;
-
-		if (!/^[\w@.]*$/.test(target.value)) {
-			newError = 'Неверный email, допустимые символы: буквы, цифры и "@"';
-		} else if (target.value.length > 25) {
-			newError = 'Допустимое количество символов: 25';
-		}
-
-		setEmailError(newError);
-	};
-
-	const onEmailBlur = ({ target }) => {
-		if (target.value.length < 5) {
-			setEmailError('Минимальное количество символов: 5');
-		}
-	};
-
-	const onPasswordChange = ({ target }) => {
-		setPassword(target.value);
-
-		let newError = null;
-
-		if (target.value.length > 30) {
-			newError = 'Допустимое количество символов: 30';
-		}
-
-		setPasswordError(newError);
-	};
-
-	const onPasswordBlur = ({ target }) => {
-		if (target.value.length < 8) {
-			setPasswordError('Минимальное количество символов: 8');
-		} else if (!/^.*(?=.*[a-zA-Z])(?=.*\d)(?=.*[!#$%&? "]).*$/.test(target.value)) {
-			setPasswordError(
-				'Пароль должен содержать буквы, заглавные буквы, цифры и спец. символы',
-			);
-		}
-	};
-
-	const onRepeatedPasswordChange = ({ target }) => {
-		setRepeatedPassword(target.value);
-
-		let newError = null;
-
-		setRepeatedPasswordError(newError);
-	};
-
-	const onRepeatedPasswordBlur = ({ target }) => {
-		if (target.value !== password) {
-			setRepeatedPasswordError('Пароли должны совпадать');
-		} else {
-			if (email && !emailError) {
-				submitButtonRef.current.focus();
-			}
-		}
-	};
 	return (
-		<form className={styles.form} onSubmit={onSubmit}>
+		<form className={styles.form} onSubmit={handleSubmit(onSubmit)}>
 			<div>
 				<label>E-mail</label>
-				<input
-					type="email"
-					name="email"
-					value={email}
-					onChange={onEmailChange}
-					onBlur={onEmailBlur}
-				></input>
+				<input type="email" name="email" {...register('email')}></input>
 				{emailError && <div className={styles.error}>{emailError}</div>}
 			</div>
 			<div>
 				<label>Password</label>
-				<input
-					type="password"
-					name="password"
-					value={password}
-					onChange={onPasswordChange}
-					onBlur={onPasswordBlur}
-				></input>
+				<input type="password" name="password" {...register('password')}></input>
 				{passwordError && <div className={styles.error}>{passwordError}</div>}
 			</div>
 			<div>
@@ -114,9 +70,7 @@ const App = () => {
 				<input
 					type="password"
 					name="password"
-					value={repeatedPassword}
-					onChange={onRepeatedPasswordChange}
-					onBlur={onRepeatedPasswordBlur}
+					{...register('repeatedPassword')}
 				></input>
 				{repeatedPasswordError && (
 					<div className={styles.error}>{repeatedPasswordError}</div>
@@ -126,14 +80,7 @@ const App = () => {
 				<button
 					type="submit"
 					ref={submitButtonRef}
-					disabled={
-						!!emailError ||
-						!!passwordError ||
-						!!repeatedPasswordError ||
-						!email ||
-						!password ||
-						!repeatedPassword
-					}
+					disabled={!!emailError || !!passwordError || !!repeatedPasswordError}
 				>
 					Зарегистрироваться
 				</button>
